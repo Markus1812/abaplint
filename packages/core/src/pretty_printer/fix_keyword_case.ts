@@ -50,14 +50,14 @@ export class FixCase {
     const ruleKey = this.keywordCase.getMetadata().key;
     const rule = this.config.readByRule(ruleKey);
     const style: KeywordCaseStyle = rule ? rule["style"] : KeywordCaseStyle.Upper;
-    
+
     if (style === KeywordCaseStyle.Derived) {
       // For the pretty printer, we need to determine the derived style
       // This is a bit more complex as we need context about the file
       // For now, we'll fallback to upper case
       return keyword.toUpperCase();
     }
-    
+
     return style === KeywordCaseStyle.Lower ? keyword.toLowerCase() : keyword.toUpperCase();
   }
 

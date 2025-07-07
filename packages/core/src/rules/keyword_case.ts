@@ -116,7 +116,9 @@ export class KeywordCase extends ABAPRule {
       key: "keyword_case",
       title: "Keyword case",
       shortDescription: `Checks that keywords have the same case. Non-keywords must be lower case.`,
-      extendedInformation: `https://github.com/SAP/styleguides/blob/main/clean-abap/CleanABAP.md#use-your-pretty-printer-team-settings`,
+      extendedInformation: `https://github.com/SAP/styleguides/blob/main/clean-abap/CleanABAP.md#use-your-pretty-printer-team-settings
+
+When the style is set to "derived", the case is determined from the first keyword in the file.`,
       tags: [RuleTag.Styleguide, RuleTag.SingleFile, RuleTag.Quickfix],
       badExample: `write 'hello world'.`,
       goodExample: `WRITE 'hello world'.`,
@@ -190,7 +192,7 @@ export class KeywordCase extends ABAPRule {
     const firstToken = tokens[0].token;
     const lastToken = tokens[tokens.length - 1].token;
     const firstTokenValue = firstToken.getStr();
-    
+
     const effectiveStyle = this.getEffectiveStyle();
 
     let description = "";
@@ -280,7 +282,7 @@ export class KeywordCase extends ABAPRule {
     if (this.conf.ignoreKeywords && this.conf.ignoreKeywords.map(k => {return k.toUpperCase();}).includes(keyword.toUpperCase())) {
       return false;
     }
-    
+
     const effectiveStyle = this.getEffectiveStyle();
     if (effectiveStyle === KeywordCaseStyle.Lower) {
       return keyword !== keyword.toLowerCase();
@@ -313,7 +315,7 @@ export class KeywordCase extends ABAPRule {
     // Look at the first token of the first statement
     const firstStatement = statements[0];
     const firstToken = firstStatement.getFirstToken();
-    
+
     if (firstToken instanceof Identifier) {
       const tokenStr = firstToken.getStr();
       // Check if it's all uppercase or all lowercase
@@ -323,8 +325,8 @@ export class KeywordCase extends ABAPRule {
         this.derivedCaseStyle = KeywordCaseStyle.Lower;
       } else {
         // Mixed case or single character - use the first character to determine
-        this.derivedCaseStyle = tokenStr.charAt(0) === tokenStr.charAt(0).toUpperCase() 
-          ? KeywordCaseStyle.Upper 
+        this.derivedCaseStyle = tokenStr.charAt(0) === tokenStr.charAt(0).toUpperCase()
+          ? KeywordCaseStyle.Upper
           : KeywordCaseStyle.Lower;
       }
     } else {
