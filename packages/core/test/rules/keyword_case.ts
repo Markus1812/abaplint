@@ -212,6 +212,29 @@ testRule(tests5, KeywordCase, config5);
 config5.ignoreKeywords = ["texT", "WrItE"];
 testRule(tests5, KeywordCase, config5);
 
+// Test derived case style
+const configDerived = new KeywordCaseConf();
+configDerived.style = KeywordCaseStyle.Derived;
+
+const testsDerived = [
+  // First statement is uppercase, so all keywords should be uppercase
+  {abap: "WRITE 'hello'.\nif foo = bar.", cnt: 1}, // "if" should be uppercase
+  {abap: "WRITE 'hello'.\nIF foo = bar.", cnt: 0}, // "IF" is correct uppercase
+  
+  // First statement is lowercase, so all keywords should be lowercase
+  {abap: "write 'hello'.\nIF foo = bar.", cnt: 1}, // "IF" should be lowercase
+  {abap: "write 'hello'.\nif foo = bar.", cnt: 0}, // "if" is correct lowercase
+  
+  // Debug - let's test simple cases first
+  {abap: "WRITE 'hello'.", cnt: 0}, // Should detect uppercase from WRITE
+  {abap: "write 'hello'.", cnt: 0}, // Should detect lowercase from write
+  
+  // Empty file should fallback to uppercase
+  {abap: "", cnt: 0},
+];
+
+testRule(testsDerived, KeywordCase, configDerived);
+
 // ************************
 
 const testLowerCaseGlobalClassSuite1 = [
