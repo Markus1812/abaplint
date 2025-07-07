@@ -212,6 +212,41 @@ testRule(tests5, KeywordCase, config5);
 config5.ignoreKeywords = ["texT", "WrItE"];
 testRule(tests5, KeywordCase, config5);
 
+// Test derived case style
+const configDerived = new KeywordCaseConf();
+configDerived.style = KeywordCaseStyle.Derived;
+
+const testsDerived = [
+  // First statement is uppercase, so all keywords should be uppercase
+  {abap: "WRITE 'hello'.\nif foo = bar.", cnt: 1}, // "if" should be uppercase
+  {abap: "WRITE 'hello'.\nIF foo = bar.", cnt: 0}, // "IF" is correct uppercase
+
+  // First statement is lowercase, so all keywords should be lowercase
+  {abap: "write 'hello'.\nIF foo = bar.", cnt: 1}, // "IF" should be lowercase
+  {abap: "write 'hello'.\nif foo = bar.", cnt: 0}, // "if" is correct lowercase
+
+  // Debug - let's test simple cases first
+  {abap: "WRITE 'hello'.", cnt: 0}, // Should detect uppercase from WRITE
+  {abap: "write 'hello'.", cnt: 0}, // Should detect lowercase from write
+
+  // Test multiple statements with different cases
+  {abap: "DATA lv_foo TYPE i.\nif lv_foo = 1.", cnt: 1}, // "if" should be uppercase (DATA is uppercase)
+  {abap: "data lv_foo type i.\nIF lv_foo = 1.", cnt: 1}, // "IF" should be lowercase (data is lowercase)
+
+  // Test with class definitions
+  {abap: "CLASS zcl_test DEFINITION PUBLIC.\nENDCLASS.", cnt: 0},
+  {abap: "class zcl_test definition public.\nENDCLASS.", cnt: 1}, // ENDCLASS should be lowercase
+
+  // Test with comments and empty statements
+  {abap: "* This is a comment\nWRITE 'hello'.\nif foo = bar.", cnt: 1}, // "if" should be uppercase
+  {abap: "* This is a comment\nwrite 'hello'.\nIF foo = bar.", cnt: 1}, // "IF" should be lowercase
+
+  // Empty file should fallback to uppercase
+  {abap: "", cnt: 0},
+];
+
+testRule(testsDerived, KeywordCase, configDerived);
+
 // ************************
 
 const testLowerCaseGlobalClassSuite1 = [
@@ -292,6 +327,19 @@ const configLowerCaseGlobalClass2 = {
   ignoreGlobalClassBoundaries: true,
 };
 testRule(testLowerCaseGlobalClassSuite2, KeywordCase, configLowerCaseGlobalClass2, "keywordCase: lower + ignore boundaries");
+
+const fixTestsDerived = [
+  {
+    input: "WRITE bar.\nif foo = bar.",
+    output: "WRITE bar.\nIF foo = bar.",
+  },
+  {
+    input: "write bar.\nIF foo = bar.",
+    output: "write bar.\nif foo = bar.",
+  },
+];
+
+testRuleFix(fixTestsDerived, KeywordCase, configDerived);
 
 const fixTests = [
   {

@@ -19,6 +19,7 @@ import {IFile} from "../files/_ifile";
 export enum KeywordCaseStyle {
   Upper = "upper",
   Lower = "lower",
+  Derived = "derived",
 }
 
 export class KeywordCaseConf extends BasicRuleConfig {
@@ -108,13 +109,16 @@ type TokenAndKeyword = {token: AbstractToken, keyword: boolean};
 
 export class KeywordCase extends ABAPRule {
   private conf = new KeywordCaseConf();
+  private derivedCaseStyle: KeywordCaseStyle.Upper | KeywordCaseStyle.Lower | undefined;
 
   public getMetadata(): IRuleMetadata {
     return {
       key: "keyword_case",
       title: "Keyword case",
       shortDescription: `Checks that keywords have the same case. Non-keywords must be lower case.`,
-      extendedInformation: `https://github.com/SAP/styleguides/blob/main/clean-abap/CleanABAP.md#use-your-pretty-printer-team-settings`,
+      extendedInformation: `https://github.com/SAP/styleguides/blob/main/clean-abap/CleanABAP.md#use-your-pretty-printer-team-settings
+
+When the style is set to "derived", the case is determined from the first keyword in the file.`,
       tags: [RuleTag.Styleguide, RuleTag.SingleFile, RuleTag.Quickfix],
       badExample: `write 'hello world'.`,
       goodExample: `WRITE 'hello world'.`,
@@ -142,6 +146,9 @@ export class KeywordCase extends ABAPRule {
     const issues: Issue[] = [];
     const ddic = new DDIC(this.reg);
     const MAX_ISSUES = 100;
+
+    // Determine the derived case style if needed
+    this.determineDerivedCaseStyle(file);
 
     if (this.conf.ignoreExceptions && obj instanceof Class) {
       const definition = obj.getClassDefinition();
@@ -186,9 +193,11 @@ export class KeywordCase extends ABAPRule {
     const lastToken = tokens[tokens.length - 1].token;
     const firstTokenValue = firstToken.getStr();
 
+    const effectiveStyle = this.getEffectiveStyle();
+
     let description = "";
     if (first.keyword === true) {
-      description = `Keyword should be ${this.conf.style} case: "${firstTokenValue}"`;
+      description = `Keyword should be ${effectiveStyle} case: "${firstTokenValue}"`;
     } else {
       description = `Identifiers should be lower case: "${firstTokenValue}"`;
     }
@@ -198,7 +207,7 @@ export class KeywordCase extends ABAPRule {
       const str = token.token.getStr();
       const pos = token.token.getStart();
       if (token.keyword === true) {
-        if (this.conf.style === KeywordCaseStyle.Lower) {
+        if (effectiveStyle === KeywordCaseStyle.Lower) {
           draft.replace(pos, str.toLowerCase());
         } else {
           draft.replace(pos, str.toUpperCase());
@@ -273,13 +282,56 @@ export class KeywordCase extends ABAPRule {
     if (this.conf.ignoreKeywords && this.conf.ignoreKeywords.map(k => {return k.toUpperCase();}).includes(keyword.toUpperCase())) {
       return false;
     }
-    if (this.conf.style === KeywordCaseStyle.Lower) {
+
+    const effectiveStyle = this.getEffectiveStyle();
+    if (effectiveStyle === KeywordCaseStyle.Lower) {
       return keyword !== keyword.toLowerCase();
-    } else if (this.conf.style === KeywordCaseStyle.Upper) {
+    } else if (effectiveStyle === KeywordCaseStyle.Upper) {
       return keyword !== keyword.toUpperCase();
     }
 
     return false;
+  }
+
+  private getEffectiveStyle(): KeywordCaseStyle {
+    if (this.conf.style === KeywordCaseStyle.Derived) {
+      return this.derivedCaseStyle || KeywordCaseStyle.Upper; // fallback to upper if not determined
+    }
+    return this.conf.style;
+  }
+
+  private determineDerivedCaseStyle(file: ABAPFile): void {
+    if (this.conf.style !== KeywordCaseStyle.Derived) {
+      return;
+    }
+
+    // Get the first statement from the file
+    const statements = file.getStatements();
+    if (statements.length === 0) {
+      this.derivedCaseStyle = KeywordCaseStyle.Upper; // default fallback
+      return;
+    }
+
+    // Look at the first token of the first statement
+    const firstStatement = statements[0];
+    const firstToken = firstStatement.getFirstToken();
+
+    if (firstToken instanceof Identifier) {
+      const tokenStr = firstToken.getStr();
+      // Check if it's all uppercase or all lowercase
+      if (tokenStr === tokenStr.toUpperCase() && tokenStr !== tokenStr.toLowerCase()) {
+        this.derivedCaseStyle = KeywordCaseStyle.Upper;
+      } else if (tokenStr === tokenStr.toLowerCase() && tokenStr !== tokenStr.toUpperCase()) {
+        this.derivedCaseStyle = KeywordCaseStyle.Lower;
+      } else {
+        // Mixed case or single character - use the first character to determine
+        this.derivedCaseStyle = tokenStr.charAt(0) === tokenStr.charAt(0).toUpperCase()
+          ? KeywordCaseStyle.Upper
+          : KeywordCaseStyle.Lower;
+      }
+    } else {
+      this.derivedCaseStyle = KeywordCaseStyle.Upper; // default fallback
+    }
   }
 
 }
